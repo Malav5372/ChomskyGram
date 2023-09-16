@@ -1,4 +1,4 @@
-# Chomsky-CYK 
+# CFG-Chomsky(CNF)-CYK 
 
 This package takes a CF grammar $G$ and a word $w$ as an input, transforms $G$ into Chomsky normal form and performs the Cocke-Younger-Kasami-algorithm (CYK) to evaluate whether the word can be created by the grammar or not.
 
