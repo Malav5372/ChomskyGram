@@ -45,7 +45,7 @@ Normal Form](https://en.wikipedia.org/wiki/Chomsky_normal_form).
 ## Running the algorithm
 
 1. Clone the project, cd into the folder and then the src folder then run javac
-   to compile:
+   to compile: `https://github.com/Malav5372/ChomskyGram.git`
    
     
 2. Compile and start console applications with demonstration of algorithms.
