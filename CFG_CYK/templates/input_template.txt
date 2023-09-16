@@ -1,0 +1,8 @@
+S, A, B, C
+a, c
+S
+
+S -> aACa
+A -> B | a
+B -> C | c
+C -> cC | \E

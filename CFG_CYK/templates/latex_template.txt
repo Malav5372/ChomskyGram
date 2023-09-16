@@ -1,0 +1,19 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper, left=0cm, right=0cm, top=2cm]{geometry}
+\begin{document}
+\begin{center}
+$table
+\newline
+$$\begin{array}{cc}
+    before:
+    \begin{array}{ccl}
+    $before
+    \end{array}
+    after:
+    \begin{array}{ccl}
+    $after
+    \end{array}
+\end{array} $$
+
+\end{center}
+\end{document}

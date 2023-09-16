@@ -1,0 +1,723 @@
+\begin{titlepage}
+\title{Automatic execution of the CYK algorithm}
+\author{by Simon Gustavs, Lukas Petermann and Undine Holst}
+\date{\today}
+\maketitle
+\thispagestyle{empty}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+The CYK algorithm was created by John Cocke, Daniel Younger and Tadao Kasami to determine wether 
+a word is part of a particular context free grammar or not. In this project the goal was to create a program that 
+can give a visual presentation of this algorithm and its result in from of a table for the input of any context free grammar and word.
+The project was implemented by Simon Gustavs, Lukas Petermann and Undine Holst in the supervision of Prof. Schirra from the Otto-von-Guericke university Magdeburg.
+
+\section{Modularization and project planning}
+For the CYK algorithm the grammar needs to be converted into Chomsky normal form(CNF). Therefore the first thing happening after the user enters the 
+grammar and the word, is the transformation of the grammar into CNF. After that the CYK algorithm can be 
+executed and the result will be put into a LaTeX and PDF file. Therefore the project was devided into four main parts plus the documentation.
+The main program parts are the input (implemented by Simon), the converting of the grammar into CNF (implemented by Lukas with help of Simon and Undine), 
+the CYK algorithm (implemented by Lukas) and the output (implemented by Lukas with help of Simon).
+This documentation was written by Undine Holst and the executability of this noweb documentation was ensured by Undine Holst with a helping hand from Simon Gustavs.
+The following code segments will have a comment by whom they were written.
+
+\section{Usage}
+Windows user will have to install MikTeX (https://miktex.org/download) to ensure the output of the result in the PDF.
+To use the program the program main.py must be executed via an IDE, editor or the command line using the 
+command 'python3 main.py'. Then the grammar members need to be imported from an external file or defined in the command line using the following syntax:
+\newline
+\newline Symbols are represented by upper case letters and they are devided by commas, semicolons, spaces, dots or pipes. 
+For the output the symbols will be framed by curly brackets. 
+\newline E.g.: In: 'A,B,C' Out: '\{A,B,C\}'
+\newline	Terminal Symbols are represented by lower case letters and are put in and out the same way as symbols.
+\newline E.g.: In: 'a,b,c' Out: '\{a,b,c\}'
+\newline	For each Symbol (e.g. A) there will be rules required. Those are also devided by commas. 
+\newline E.g.: If A can be turned into B, a or epsilon: In: A: 'B, a, \textbackslash E' Out: '\{A -$>$ B,a,\textbackslash E\}'
+\newline	The starting symbol has to be one of the symbols(upper case). 
+And note that epsilon has to be written as '\textbackslash E'.
+\newline
+\newline If the input is realized through an external file that file needs to be structured as follows:
+\newline The first filed line needs to contain all variables represented by upper case letters devided by any of the allowed splitting symbols. 
+\newline The second filled line needs to contain the alphabet represented by lower case letters also devided by any of the allowed splitting symbols.
+\newline The third filled line has to contain the starting symbol which must be part of the variables.
+\newline The following non-empty lines must contain the rules for each variable. The first character of the lines for the rules needs to be the variable for that 
+the rules of this line apply. For better clarity next an arrow like this '-$>$' may be used to differentiate between the key variable and the rules. Then the rules need 
+to be stated using the already known splitting symbols.
+\newline Empty lines will be ignored by the program.
+\newline A file could look like this:
+\newline
+\newline 1 S,A,B
+\newline 2 a,b
+\newline 3
+\newline 4 S
+\newline 5 S -$>$ AA,AB
+\newline 6 A -$>$ BA, a
+\newline 7 B -$>$ b
+\newline
+\newline Next the word that the user wants to analyze will be asked for. Afterwards the program will be executed.
+Now the file CYK\_Tableau.pdf shows the cyk building table and the cnf of the grammar if opened.
+
+\newpage
+\section{Main}
+
+In the main program all other important parts of the program are executed.
+<<main>>=
+import subprocess
+import string
+import tabulate
+from string import Template
+import copy
+
+<<eingabe>>
+<<cnf>>
+<<cyk>>
+<<output>>
+<<runpdflatex>>
+<<printgrammar>>
+<<inputmain>>
+<<chomskynf>>
+<<execcyk>>
+
+@
+First the needed files are imported. Then a function to call the subprocess for carrying out the converting of the LaTeX
+ file into a PDF file is defined.
+<<runpdflatex>>=
+#Lukas
+def run_pdflatex(file_name='CYK_Tableau.tex', path='.'):
+    return subprocess.call(['pdflatex', file_name], cwd=path)
+@
+For reference it is good to visualize the current state of the grammar from time to time. Therefore the grammar will be printed 
+when needed. Since the grammar is a set it is just printed like follows:
+<<printgrammar>>=
+#Lukas
+def print_grammar(rules):
+    for key, value in rules.items():
+        print(f'{key} --> {value}')
+    print("\n")
+
+@
+Afterwards the input of all necessary information about the grammar and the word in question is carried out. The grammar may
+ be imported so that possibility is given through a yes/no decision. The original grammar gets preserved by a deepcopy.
+<<inputmain>>=
+#Simon
+grammar = CFG()
+if input("Do you want to import your Grammar? [y/N] ") in ['Y', 'y']:
+    CFG.file_input(grammar)
+else:
+	CFG.new_grammar(grammar)
+word = new_word()
+saveGrammar = copy.deepcopy(grammar.rules)
+
+@
+Then the routine for converting the grammar into CNF is called. While converting there will be intermediate outputs. Therefore
+ after the routine is done, there will be a success message and the converted grammar will be printed.
+<<chomskynf>>=
+#Simon
+grammar.rules = cnf(grammar)
+print("cnf done")
+print_grammar(grammar.rules)
+
+@
+After all the preparations are done, the CYK algorithm is executed and the result is stored in a table.
+Then a function to convert that table, the grammar and the word in question into a LaTeX text is called.
+The LaTeX file is opened, the text is written into it and it is closed again. Then a success message is printed.
+ Lastly the LaTeX file is turned into a PDF file using the run\_ pdflatex function and again a success message is printed.
+<<execcyk>>=
+#Simon
+table = cyk(grammar, word)
+tableau = to_latex(table, word, grammar.start, grammar.rules, saveGrammar)
+file = open(file="CYK_Tableau.tex", mode="w")
+file.write(tableau)
+file.close()
+print('\nwritten in CYK_Tableau.tex')
+run_pdflatex()
+print('\noutput saved to CYK_Tableau.pdf')
+
+@
+\section{Input}
+Through the input a context free grammar and a word to be tested of being part of the grammar are entered. 
+First of all a list with splitting symbols is defined in order to be able to differentiate between different symbols.
+<<eingabe>>=
+#Simon
+splitter = ['.', ';', '  ', ',', '|']
+	<<newword>>
+	<<cfg>>
+	<<csvar>>
+	<<csyntax>>
+
+@
+Next the input of the word in question is realized. In order to test the word later the string from the input is converted 
+into a character list.
+<<newword>>=
+#Simon
+def new_word():
+    word = input("Please enter the word. \n")
+    char_list = []
+    for i in word:
+        char_list.append(i)
+    return char_list
+
+@
+A context free grammar consists of variables, an alphabet, a set of rules and a start variable. Therefore a class for context
+ free grammars (CFG) is defined.
+<<cfg>>=
+	<<initcfg>>
+	<<ngrammar>>
+	<<rls>>
+
+@
+The members of a context free grammar (variables, the alphabet, the rules and the start variable) are defined as follows:
+<<initcfg>>=
+#Simon
+class CFG:
+
+    def __init__(self):
+        self.variables = []
+        self.alphabet = []
+        self.rules = dict(set())
+        self.start = None
+
+    def set_variables(self, variables):
+        self.variables = variables
+
+    def set_alphabet(self, alphabet):
+        self.alphabet = alphabet
+
+    def set_rules(self, key, value):
+        if key not in self.rules:
+            self.rules.update({key: set()})
+        self.rules[key].add(value)
+
+    def set_start(self, start):
+        self.start = start
+
+@
+Following these definitions the user input via command line is implemented.
+First the user is asked to enter all variables respectively symbols and then all splitting symbols in the string are replaced 
+by space. The string is then converted into a list by turning the string parts, devided by space, into list members. 
+Afterwards that list is assigned as the variables of the grammar. Then the terminal symbols 
+respectively the alphabet are inquired from the user. After replacing all splitting symbols with space the string is turned into a list again and 
+assigned as the alphabet of the grammar. The rules for each variable are then inquired from the user. After replacing the 
+splitting symbols with space and turning the string into a list the function for checking the syntax is called. If the syntax is fine the sets of keys and
+ values are assigned as the rules of the grammar. After that the start variable is inquired from the user and is tested to 
+ be part of the variables.
+<<ngrammar>>=
+#Simon
+    def new_grammar(self):
+        var = input("Please enter all symbols.\n")
+        for i in splitter:
+            var = var.replace(i, ' ')
+        self.set_variables(var.split())
+
+        var = input("Please enter all terminal symbols.\n")
+        for i in splitter:
+            var = var.replace(i, ' ')
+        self.set_alphabet(var.split())
+
+        for i in self.variables:
+            var = input(
+                "Please enter all rules for " + i +
+                ".\nPlease enter \\E for epsilon (if needed).\n")
+            for k in splitter:
+                var = var.replace(k, ' ')
+            var = var.split()
+            check_syntax(self.variables, self.alphabet, var)
+            for k in var:
+                self.set_rules(i, k)
+
+        self.set_start(input("Please enter the starting Symbol.\n"))
+        check_start(self.variables, self.start)
+
+@
+Since there is also the option to enter the grammar via an external file, that file needs to be converted into usable information 
+for the grammar. First the user is asked to enter the filename they want to import. That file is then split into a list of 
+all lines from which the empty lines are removed. The splitting symbols in the first two lines are replaced by spaces. Then 
+the first line is assigned as the variables and the second line as the alphabet. The start variable from the third line is 
+then checked to be part of the variables. Next the first three lines of the file will be deleted so just the rules of the 
+grammar will be left in the file. 
+<<filein>>=
+#Simon
+    def file_input(self):
+            
+        file = open(input("Enter filename you want to import.\n"), "r").read().splitlines()
+        for i in file:
+            if i == '':
+                file.remove(i)
+        for i in splitter:
+            file[0] = file[0].replace(i, ' ')
+            file[1] = file[1].replace(i, ' ')
+        self.set_variables(file[0].split())
+        self.set_alphabet(file[1].split())
+
+        self.set_start(file[2])
+        check_start(self.variables, self.start)
+        del file[0:3]
+
+@
+Now just the lines with rules are left in the file. So for each line the strings need to be translated into usable information for the program. 
+The first character of each line is then set as the nonterminal symbol for which the rules of this line are intended. Next all splitting symbols are 
+replaced by space and the line is split into a list. Since the nonterminal is already saved, it is then deleted from the file. If the entered rules 
+do follow the syntax the rules are assigned to the grammar.
+<<rls>>=
+#Simon
+	<<filein>>
+        for rules in file:
+            nterminal = rules[0]
+            for i in splitter:
+                rules = rules.replace(i, ' ')
+            rules = rules.split()
+            del rules[0]
+            rules.remove('->')
+            check_syntax(self.variables, self.alphabet, rules)
+            for k in rules:
+                self.set_rules(nterminal, k)
+
+@
+The syntax of the grammar needs to be checked for the program to work. Therefore the variables from the input are devided 
+into upper and lower case variables. Then for each lower and upper case variable it is checked whether they are part of the 
+alphabet respectively the variables. If not then an error message will be displayed.
+<<csyntax>>=
+#Simon
+def check_syntax(variables, alphabet, rules):
+    lower = []
+    upper = []
+    for i in rules:
+        if i != r'\E':
+            for j in i:
+                if j.islower():
+                    lower.append(j)
+                if j.isupper():
+                    upper.append(j)
+
+    for low in lower:
+        if low not in alphabet:
+            print("Inappropriate terminal symbols have been entered.\n")
+            raise SystemExit
+
+    for upp in upper:
+        if upp not in variables:
+            print("Inappropriate symbols have been entered. \n")
+            raise SystemExit
+
+@
+The start variable also needs to be checked of being part of the variables. If it is not, an error message is shown again.
+<<csvar>>=
+#Simon
+def check_start(variables, start):
+    if start not in variables:
+        print("The starting Symbol has to be part of the symbols. \n")
+        raise SystemExit
+
+@
+\section{Chomsky Normal Form}
+As mentioned in the introduction, before applying the CYK algorithm the grammar needs to be converted into
+Chomsky Normal Form. Therefore first all epsilon rules respectively rules that point to the empty word need to be eliminated. Next is the elimination 
+of chain rules. Then not isolated terminal symbols on the right side of the rules are eliminated. If the number of symbols exceeds the number of letters in the alphabet an alternative function 
+that uses ASCII code for the variables returns the new grammar rules and the value 'true' respectively '1'. In the end the long right sides are eliminated. If the symbols exceed the alphabet 
+an alternative function for the elimination of long right sides with exceeding number of symbols is used.
+After each step a success message and the current state of the grammar are shown. When the grammar is successfully converted into Chomsky Normal Form it is returned.
+<<cnf>>=
+#Lukas
+	<<epsilonelim>>
+	<<chainelim>>
+	<<nonisoelim>>
+	<<lrelim>>
+	<<cnfalt>>
+def cnf(grammar):
+    grammar.rules = epsilon_elim(grammar.start, grammar.rules)
+    print("Occurrences of epsilon eliminated.")
+    print_grammar(grammar.rules)
+    
+    grammar.rules = chain_elim(grammar.rules)
+    print("Occurrences of chained rules eliminated.")
+    print_grammar(grammar.rules)
+    
+    grammar_alternative = non_iso_term_elim(grammar.rules, grammar.variables, 
+    														grammar.alphabet)
+    print("Occurrences of non isolated terminal symbols eliminated.")
+    print_grammar(grammar_alternative[0])
+    
+    if grammar_alternative[1]:
+        grammar_alternative = long_right_alternative(
+        										grammar_alternative[0])
+        print("Occurrences of long right sides eliminated.")
+        return grammar_alternative
+        
+    grammar.rules = long_right_elim(grammar_alternative[0], grammar.alphabet)
+    print("Occurrences of long right sides eliminated.")
+    print_grammar(grammar.rules)
+    return grammar.rules
+
+@
+For the elimination of rules pointing to epsilon respectively the empty word first of all the notation of epsilon is 
+saved as '\textbackslash E'. Next all keys of rules that point to epsilon are noted so that only epsilon rules will be 
+considered for the epsilon elimination. If there are no rules containing epsilon the rules will be returned without changing. 
+Otherwise the program will go on and iterate through the values for each key. All values that include epsilon keys will be 
+saved to tmp\_key. Then new rules will be added to the values of the current key after being created by removing characters (the epsilon keys) from the old values. 
+If there are empty rules, those will be replaced by the notation '\textbackslash E'. Then all epsilons ('\textbackslash E') will be removed from the 
+old epsilon key rules. If there are still epsilons left in other rules, those will be added as new epsilon rules and the whole function will be started all 
+over. That will also happen if there is just one epsilon rule left that is not pointing from the start symbol to the empty word. If the function does 
+not need to be started over the changed rules are returned.
+<<epsilonelim>>=
+#Undine
+def epsilon_elim(start, rules):
+    eps = r'\E'
+    eps_keys = check_rule(rules, eps)
+    if not eps_keys:
+        return rules
+    for key, value in rules.items():
+        tmp_key = set()
+        tmp_rule = set()
+        for val in value:
+            tmp_key.update(char for char in eps_keys if char in val)
+            tmp_rule.update(val.replace(char, "") for char in tmp_key 
+            		for val in value if char in val)  
+        value.update(tmp_rule)
+    for key, values in rules.items():
+        tmpval = values.copy()
+        for word in values:
+            if not word:
+                tmpval.add(eps)
+                tmpval.remove('')
+        rules[key] = tmpval
+    for key in eps_keys:
+        rules[key].remove(r'\E')
+    eps_keys = check_rule(rules, eps)
+    if len(eps_keys) > 1 or not (len(eps_keys) == 1 and start in eps_keys):
+        return epsilon_elim(start, rules)
+    return rules
+
+@ 
+Next all chain rules will be eliminated. Therefore all key variables (nonterminating symbols) will be put into a list and a new dictionary will be created. 
+Then iterating through all keys the rules for each key will be added to the new dictionary. If a key is a value for another variable in the grammar that variable will 
+be added to new\_keys. Then the rules from any of the new\_keys members will be expanded by the rules for the key and the key itself will be removed from the values of that rule.
+When all keys have been considered the now chain free grammar will be returned.
+<<chainelim>>=
+#Undine
+def chain_elim(rules):
+    keys = rules.keys()
+    new_dict = {}
+    for key in list(keys):
+        new_dict.update({key: rules[key]})
+        new_keys = check_rule(rules, key)
+        for k in new_keys:
+            rules[k].update(rules[key])
+            rules[k].remove(key)
+    return new_dict
+
+@
+Now all terminal symbols that are not yet isolated need to be segregated. First of all it will be checked whether 
+the number of terminal symbols (the alphabet) is bigger than the number of not yet to symbols assigned upper case 
+letters of the ASCII alphabet. If the alphabet is bigger than the number of free ASCII symbols an alternative function 
+that is designed for special cases with a long alphabet is called instead. Next the letters of the grammar alphabet are 
+paired up with the not yet used upper case letters. Then for each value of every key will be checked whether the value is 
+a not isolated terminal symbol and if it is it will be substituted with the upper case letter it was associated with in 
+the previous step. There are a lot of substitute variables in this part of the code since the original variables should not 
+be changed until after all steps are done. After the function is done it will be checked whether it was fully effective and 
+if not then the function is called again. Lastly the changed grammar and the value 'false' (which stands for not having used 
+the alternative function for long alphabets) are returned.
+<<nonisoelim>>=
+#Lukas
+def non_iso_term_elim(rules, variables, alphabet):
+    alph = set(string.ascii_uppercase) - set(variables)
+    new_dict = dict()
+    if len(alphabet) > len(alph):
+        return non_iso_term_elim_alternative(rules, variables, 
+        		alphabet)
+    map_term_not_term = [(char, symbol) for char, symbol
+                         in zip(alphabet, alph)]
+    for keys, values in rules.items():
+        new_dict[keys] = set()
+        tmp_val = values.copy()
+        for val in tmp_val:
+            tmp_str = val
+            for term in map_term_not_term:
+                if term[0] in tmp_str and len(tmp_str) > 1:
+                    tmp_str = tmp_str.replace(term[0], term[1])
+                    new_dict[term[1]] = set(term[0])
+            tmp_val.remove(val)
+            tmp_val.add(tmp_str)
+        new_dict[keys].update(tmp_val)
+    for value in new_dict.values():
+        for strings in value:
+            if len(strings) > 1:
+                for term in alphabet:
+                    if term in strings:
+                        non_iso_term_elim(new_dict,
+                                          (key for key, values in new_dict.items()),
+                                          alphabet)
+    return new_dict, False
+@
+The last step of turning a grammar into Chomsky Normal Form is to eliminate long right sides of rules.
+The first thing that happens is again to check whether the upper case letters that are not yet used as symbols 
+are enough to run the function. If not then an alternative function for long alphabets is called.
+Then for each key every value is checked of being longer than two symbols. If it is then the last two symbols 
+of the rule are saved as a new rule for which a new key is extracted from the remaining ASCII upper case letters 
+and the last two symbols of the original rule are replaced with the new key. Next the changed rule is updated and 
+the new rule is added to the grammar. If there are still rules with more than two symbols left in the grammar then 
+the whole function is repeated. Otherwise the changed grammar will be returned.
+<<lrelim>>=
+#Lukas
+def long_right_elim(rules, alphabet):
+    alph = set(string.ascii_uppercase) - set(key for key in rules)
+    if len(alphabet) > len(alph):
+        return long_right_alternative(rules)
+    new_dict = dict()
+    for key, values in rules.items():
+        tmp_val = values.copy()
+        new_dict[key] = tmp_val
+        for strings in values:
+            if len(strings) > 2:
+                tmp_str = strings
+                new_val = tmp_str[-2:] 
+                new_key = alph.pop() 
+                tmp_str = tmp_str[:-2] + new_key
+                new_dict[key].remove(strings)
+                new_dict[key].add(tmp_str)
+                new_dict[new_key] = set()
+                new_dict[new_key].add(new_val)
+    repeat = False
+    for key, values in new_dict.items(): 
+        for strings in values:
+            if len(strings) > 2:
+                repeat = True
+    if repeat:
+        return long_right_elim(new_dict, alphabet)
+    return new_dict
+   
+@ 
+\section{Alternatives for long alphabets}
+Like already mentioned in the section before there are cases where the ASCII upper case letters 
+are not enough to follow through with the functions. Therefore for the elimination of not isolated 
+terminal symbols and long right sides there are alternative functions.
+<<cnfalt>>=
+	<<nonisoalt>>
+	<<lralt>>
+
+@
+The alternative function for eliminating not isolated terminal symbols works roughly the 
+same way as the original function. The only difference is that the set of not yet assigned upper 
+case letters does include as many ASCII uppercase letters as needed.
+<<nonisoalt>>=
+#Lukas
+def non_iso_term_elim_alternative(rules, variables, alphabet):
+    alph = set(string.ascii_uppercase) - set(variables)
+    length_difference = len(alphabet) - len(alph)
+    alternate_alph = set(string.ascii_uppercase)
+    needed_symbols = [alternate_alph.pop() for _ in range(
+    							int(length_difference / 10) + 1)]
+    new_dict = dict()
+    for symbol in needed_symbols:
+        for diff in range(length_difference):
+            alph.add(symbol + str(diff))
+    map_term_not_term = [(char, symbol) for char, symbol
+                         in zip(alphabet, alph)]
+    for keys, set_of_strings in rules.items():
+        new_dict[keys] = set()
+        set_copy = set_of_strings.copy()
+        for strings in set_copy:
+            string_copy = strings
+            for term_symbol in map_term_not_term:
+                if term_symbol[0] in string_copy and len(string_copy) > 1:
+                    string_copy = string_copy.replace(term_symbol[0], term_symbol[1])
+                    new_dict[term_symbol[1]] = set(term_symbol[0])
+            set_copy.remove(strings)
+            set_copy.add(string_copy)
+
+        new_dict[keys].update(set_copy)
+    repeat = False
+    for set_of_strings in new_dict.values():
+        for strings in set_of_strings:
+            if len(strings) > 1 and (set(strings) & set(alphabet)):
+                        return non_iso_term_elim_alternative(new_dict,
+                                             (key for key in new_dict.keys()),
+                                             alphabet)
+    return new_dict, True
+
+@
+For the elimination of long right sides there is also an alternative for grammars with a 
+long alphabet. It works just like the original function with the difference that it recognizes 
+whether there already are keys that are ASCII upper case letters and then uses all other ASCII 
+upper case letters as not yet assigned values. And it also pays attention to the ASCII symbols 
+throughout the whole process.
+<<lralt>>=
+#Lukas
+def long_right_alternative(rules):
+    alternate_keys = [list(key)[0] for key in rules.keys() if len(key) > 1]
+    alph = set(string.ascii_uppercase) - set(alternate_keys)
+    new_dict = dict()
+    am_new_keys = 0
+    new_key = alph.pop()+str(am_new_keys)
+    for key, set_of_strings in rules.items():
+        new_dict[key] = set_of_strings.copy()
+        for strings in set_of_strings:
+            amount_integers = len([num for num in [char for char in strings]
+                                   if num not in string.ascii_uppercase])
+            if len(strings) - amount_integers > 2:
+                string_copy = strings
+                length = 0
+                new_val = ""
+                for char in reversed(string_copy):
+                    if length == 2:
+                        break
+                    if char not in string.ascii_uppercase:
+                        new_val = char + new_val
+                        continue
+                    new_val = char + new_val
+                    length += 1
+                am_new_keys += 1
+                if am_new_keys > 9:
+                    new_key = alph.pop()
+                    am_new_keys = 0
+                if len(new_key) > 1:
+                    new_key = ''.join(list(new_key)[:-1]) + str(am_new_keys)
+                string_copy = string_copy[:-len(new_val)] + new_key
+                new_dict[key].remove(strings)
+                new_dict[key].add(string_copy)
+                new_dict[new_key] = set()
+                new_dict[new_key].add(new_val)
+    
+    for key, set_of_strings in new_dict.items():
+        for strings in set_of_strings:
+            amount_integers = len([num for num in
+                                   [char for char in strings]
+                                   if num not in string.ascii_uppercase])
+            if len(strings) - amount_integers > 2:
+                return long_right_alternative(new_dict)
+
+    return new_dict
+
+@
+\section{CYK algorithm}
+The most important part of this program is the CYK algorithm itself as the title says. 
+<<cyk>>=
+	<<crule>>
+	<<matrixmult>>
+	<<cykexec>>
+
+
+@
+The function for finding keys for certain values has already been used a lot in this program. 
+Here it is defined:
+<<crule>>=
+#Simon
+def check_rule(rules, rhs):
+    symbols = [key for key, value in rules.items() if rhs in value]  
+    return symbols
+
+@
+In this part of the program the CYK algorithm is finally executed. First of all a tableau is created that 
+is as broad and as high as the word in question is long. The diagonal is then filled with the rules that the 
+letters of the word could have been derived from. Next for each panel in the next higher diagonal of the tableau 
+all variables of the left field of the panel are combined with the variables of the field below and the variables 
+that those combinations may derive from are then saved in the panel. For the next higher diagonal the fields of the 
+row from left to right will be combined with the fields of the column from high to low to fill the panel. This goes 
+on until the whole tableau is filled and then returned. The function that combines the fields and searches out the 
+results for the panel in question is matrixmult.
+<<cykexec>>=
+#Lukas
+def cyk(grammar, word):
+    tableau = []
+    word_length = len(word)
+    for i in range(0, word_length):
+        tableau.append([""] * word_length)
+        tableau[i][i] = [x for x in check_rule(grammar.rules, word[i])]
+
+    for s in range(1, word_length):
+        for i in range(1, word_length - s + 1):
+            result = []
+            for k in range(i, i + s):
+                horizontal = tableau[i - 1][k - 1]
+                vertical = tableau[k][i + s - 1]
+                result += (matrixmult(grammar.rules, horizontal, vertical))
+            tableau[i - 1][i + s - 1] = list(dict.fromkeys(result))
+    return tableau
+
+@
+This function concatenates the variables from two fields as already described and returns the variables that 
+the combinations may derive from. The variable lhs represents the content of the cell from the same row 
+and the variable rhs represents the content of the cell from the same column as the panel that needs to be filled.
+Therefore for both cells it is checked whether there is more than one variable in the cell. If it is then the string 
+is split into two and both parts are attached to the nonterminals for left respectively right. Otherwise the string 
+in the cell will directly be assigned as the nonterminals. Then all keys from which the combined rule could derive 
+from are saved in a two dimensional array that is then turned into a list. Then the nonterminals for the cell in question 
+are returned.
+<<matrixmult>>=
+#Lukas
+def matrixmult(rules, lhs, rhs):
+    non_terminals = []
+    non_terminals_left = list()
+    non_terminals_right = list()
+    if len(lhs) > 2 and lhs[1].isnumeric():
+        non_terminals_left.append(lhs[:2])
+        non_terminals_left.append(lhs[2:])
+    else:
+        non_terminals_left = lhs
+    if len(rhs) > 2 and rhs[1].isnumeric():
+        non_terminals_right.append(rhs[:2])
+        non_terminals_right.append(rhs[2:])
+    else:
+        non_terminals_right = rhs
+
+    for nterms_left in non_terminals_left:
+        for nterms_right in non_terminals_right:
+            non_terminals.append(check_rule(rules, nterms_left + nterms_right))
+    nonterminals_flatted = [x for inner in non_terminals for x in inner]
+    return nonterminals_flatted
+
+@    
+\section{Output as PDF via LaTeX}
+After the result has been processed it still needs to be put out in a graphic way so that 
+the user is able to understand the process of the algorithm. Therefore the result needs to 
+be converted into a text that LaTex can handle and convert into a PDF. So this function 
+creates a string with the correct LaTex syntax to show the table that was used for the CYK algorithm,
+the grammar from the input, the grammar after converting it into CNF and whether the word is part of the 
+grammar.
+<<output>>=
+#Lukas, Simon
+def to_latex(table, word, start, rules, before):
+
+    v_indices = [str(x + 1)for x in range(len(word))]
+    h_indices = [word[x - 1] for x in range(1, len(word)+1)]
+
+    template = ''.join(open("latex_template.txt", "r").read().splitlines())
+    latex_string = str(tabulate.tabulate(table,
+                                         tablefmt="latex",
+                                         showindex=iter(v_indices),
+                                         headers=iter(h_indices)))
+
+    latex_string = latex_string.replace(
+    			r'\begin{tabular}'r'{r' + ("l" * len(word)),
+            r"\begin{tabular}{|r" + "|c" * len(word) + "|")
+
+    latex_string = latex_string.replace("['", r'\{')
+    latex_string = latex_string.replace("']", r'\}')
+    latex_string = latex_string.replace("', '", ", ")
+    latex_string = latex_string.replace("1 & ", "\\hline\n 1 & ", 1)
+    latex_string = latex_string.replace("[]", r'$\emptyset$')
+    latex_string = latex_string.replace("\\end{tabular}", "$word \\end{tabular}")
+    if table[0][-1]:
+        is_in = '$$w \\in L$ \n' if start in table[0][-1][0] else '$$w \\notin L$ \n'
+    else:
+        is_in = '$$w \\notin L$ \n'
+    latex_string = Template(template).safe_substitute(table=latex_string, word=is_in)
+    latex_string = latex_string.replace("word", is_in)
+    latex_string = Template(latex_string).safe_substitute(
+    						before=grammar_to_latex(before))
+    latex_string = Template(latex_string).safe_substitute(
+    						after=grammar_to_latex(rules))
+    return latex_string
+
+
+def grammar_to_latex(rules):
+    table_string = ''
+    for key, values in rules.items():
+        table_string = table_string + f'{key} & \\rightarrow & {values} \\\ \n'
+    table_string = table_string.replace("'", "")
+    table_string = table_string.replace(', ', ' \\mid ')
+    table_string = table_string.replace('}', '')
+    table_string = table_string.replace('{', '')
+    return table_string
